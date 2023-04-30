@@ -2,10 +2,12 @@ import pandas as pd
 from predictor.logger import logging
 from predictor.exception import SensorException
 from predictor.config import mongo_client
+from sklearn.preprocessing import LabelEncoder
 import os,sys
 import yaml
 import numpy as np
 import dill
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 def get_collection_as_dataframe(database_name:str,collection_name:str)->pd.DataFrame:
@@ -98,3 +100,29 @@ def load_numpy_array_data(file_path: str) -> np.array:
             return np.load(file_obj)
     except Exception as e:
         raise SensorException(e, sys) from e
+
+class MultiColumnLabelEncoder(BaseEstimator,TransformerMixin):
+    feature_names_in_=['age','sex','bmi','children','smoker','region']
+    def __init__(self,columns = None):
+        self.columns = columns # array of column names to encode
+
+    def fit(self,X,y=None):
+        return self # not relevant here
+
+    def transform(self,X):
+        '''
+        Transforms columns of X specified in self.columns using
+        LabelEncoder(). If no columns specified, transforms all
+        columns in X.
+        '''
+        output = X.copy()
+        if self.columns is not None:
+            for col in self.columns:
+                output[col] = LabelEncoder().fit_transform(output[col])
+        else:
+            for colname,col in output.iteritems():
+                output[colname] = LabelEncoder().fit_transform(col)
+        return output
+
+    def fit_transform(self,X,y=None):
+        return self.fit(X,y).transform(X)
